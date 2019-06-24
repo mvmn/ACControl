@@ -1,4 +1,4 @@
-# ACControl
+# ACControl library
 Works for Gree devices, but Cooper&amp;Hunter as well
 
 # References
