@@ -1,4 +1,4 @@
-# ACControl library
+# AC (Air Conditioner) Control library
 Works for Gree devices, but Cooper&amp;Hunter as well
 
 # References
