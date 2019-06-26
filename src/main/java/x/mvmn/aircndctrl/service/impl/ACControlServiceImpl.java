@@ -5,19 +5,32 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketAddress;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import x.mvmn.aircndctrl.model.BindResponse;
-import x.mvmn.aircndctrl.model.DataPacket;
-import x.mvmn.aircndctrl.model.Envelope;
+import x.mvmn.aircndctrl.model.addr.ACAddress;
+import x.mvmn.aircndctrl.model.addr.ACBinding;
+import x.mvmn.aircndctrl.model.comm.DataPacket;
+import x.mvmn.aircndctrl.model.comm.Envelope;
+import x.mvmn.aircndctrl.model.response.BindResponse;
+import x.mvmn.aircndctrl.model.response.SetParametersResponse;
+import x.mvmn.aircndctrl.model.response.StatusResponse;
+import x.mvmn.aircndctrl.service.ACControlService;
 import x.mvmn.aircndctrl.service.EncryptionService;
+import x.mvmn.aircndctrl.util.LangUtil;
 
-public class ACControlServiceImpl {
+public class ACControlServiceImpl implements ACControlService {
+
+	protected static final TypeReference<BindResponse> TYPEREF_BIND_RESPONSE = new TypeReference<BindResponse>() {};
+	protected static final TypeReference<StatusResponse> TYPEREF_GET_STATUS_RESPONSE = new TypeReference<StatusResponse>() {};
+	protected static final TypeReference<SetParametersResponse> TYPEREF_SET_PARAMS_RESPONSE = new TypeReference<SetParametersResponse>() {};
+
+	protected static final List<String> ALL_COLUMNS_LIST = Arrays.asList("Pow", "Mod", "SetTem", "WdSpd", "Air", "Blo", "Health", "SwhSlp", "Lig", "SwingLfRig",
+			"SwUpDn", "Quiet", "Tur", "StHt", "TemUn", "HeatCoolType", "TemRec", "SvSt", "time");
 
 	private final EncryptionService encryptionService;
 	private final ObjectMapper objectMapper;
@@ -34,85 +47,81 @@ public class ACControlServiceImpl {
 		this.objectMapper = objectMapper;
 	}
 
+	public DataPacket<BindResponse> bind(ACAddress acAddress) throws IOException {
+		return bind(acAddress.getMac(), acAddress.getSocketAddress());
+	}
+
 	public DataPacket<BindResponse> bind(String mac, SocketAddress address) throws IOException {
-		try (DatagramSocket socket = new DatagramSocket()) {
-			Map<String, Object> bindRequest = new HashMap<>();
-			bindRequest.put("mac", mac);
-			bindRequest.put("uid", 0);
-			bindRequest.put("t", "bind");
-			Envelope requestEnvelope = createEnvelope(encryptionService.encryptStrToBase64(objectMapper.writeValueAsString(bindRequest)), true);
-			requestEnvelope.setTcid(mac);
-			byte[] data = objectMapper.writeValueAsBytes(requestEnvelope);
+		Map<String, Object> request = LangUtil.mapBuilder("mac", (Object) mac).set("uid", 0).set("t", "bind").build();
+		return exchange(address, mac, request, true, TYPEREF_BIND_RESPONSE);
+	}
 
+	public DataPacket<StatusResponse> getStatus(ACBinding binding) throws IOException {
+		return getStatus(binding, ALL_COLUMNS_LIST);
+	}
+
+	public DataPacket<StatusResponse> getStatus(ACBinding binding, List<String> columnsList) throws IOException {
+		Map<String, Object> request = LangUtil.mapBuilder("t", (Object) "status").set("uid", 0).set("cols", columnsList).build();
+		return exchange(binding, request, false, TYPEREF_GET_STATUS_RESPONSE);
+	}
+
+	public DataPacket<SetParametersResponse> setParameters(ACBinding binding, Map<String, ?> values) throws IOException {
+		String[] params = new String[values.size()];
+		Object[] valuesArr = new String[values.size()];
+
+		int i = 0;
+		for (Map.Entry<String, ?> entry : values.entrySet()) {
+			params[i] = entry.getKey();
+			valuesArr[i] = entry.getValue();
+			i++;
+		}
+
+		return setParameters(binding, params, valuesArr);
+	}
+
+	public DataPacket<SetParametersResponse> setParameters(ACBinding binding, String[] params, Object[] values) throws IOException {
+		Map<String, Object> request = LangUtil.mapBuilder("opt", (Object) params).set("p", values).set("t", "cmd").build();
+		return exchange(binding.getSocketAddress(), binding.getEncryptionKey(), binding.getEncryptionKey(), request, false, TYPEREF_SET_PARAMS_RESPONSE);
+	}
+
+	public DataPacket<SetParametersResponse> setTime(ACBinding binding, String time) throws IOException {
+		Map<String, Object> request = LangUtil.mapBuilder("t", (Object) "cmd").set("sub", binding.getMac()).set("p", LangUtil.arr(time))
+				.set("opt", LangUtil.arr("time")).build();
+		return exchange(binding.getSocketAddress(), binding.getMac(), binding.getEncryptionKey(), request, false, TYPEREF_SET_PARAMS_RESPONSE);
+	}
+
+	public <T> DataPacket<T> exchange(ACAddress acAddress, Map<String, Object> packetData, boolean i, TypeReference<T> responseType) throws IOException {
+		return exchange(acAddress.getSocketAddress(), acAddress.getMac(), packetData, i, responseType);
+	}
+
+	public <T> DataPacket<T> exchange(SocketAddress address, String mac, Map<String, Object> packetData, boolean i, TypeReference<T> responseType)
+			throws IOException {
+		return exchange(address, mac, null, packetData, i, responseType);
+	}
+
+	public <T> DataPacket<T> exchange(ACBinding binding, Map<String, Object> packetData, boolean i, TypeReference<T> responseType) throws IOException {
+		return exchange(binding.getSocketAddress(), binding.getMac(), binding.getEncryptionKey(), packetData, i, responseType);
+	}
+
+	public <T> DataPacket<T> exchange(SocketAddress address, String mac, String encryptionKey, Map<String, Object> packetData, boolean i,
+			TypeReference<T> responseType) throws IOException {
+		String packetEncrypted = encryptionKey != null ? encryptionService.encryptStrToBase64(objectMapper.writeValueAsString(packetData), encryptionKey)
+				: encryptionService.encryptStrToBase64(objectMapper.writeValueAsString(packetData));
+		byte[] data = objectMapper.writeValueAsBytes(createPackEnvelope(packetEncrypted, i).setTcid(mac));
+
+		try (DatagramSocket socket = new DatagramSocket()) {
 			socket.send(new DatagramPacket(data, data.length, address));
 			DatagramPacket packet = new DatagramPacket(new byte[65536], 65536);
 			socket.receive(packet);
 			Envelope responseEnvelope = objectMapper.readValue(Arrays.copyOf(packet.getData(), packet.getLength()), Envelope.class);
-			BindResponse bindResponse = objectMapper.readValue(encryptionService.decryptBase64ToStr(responseEnvelope.getPack()), BindResponse.class);
-			return new DataPacket<>(packet, responseEnvelope, bindResponse);
+
+			String responsePacket = encryptionKey != null ? encryptionService.decryptBase64ToStr(responseEnvelope.getPack(), encryptionKey)
+					: encryptionService.decryptBase64ToStr(responseEnvelope.getPack());
+			return new DataPacket<T>(packet, responseEnvelope, objectMapper.readValue(responsePacket, responseType));
 		}
 	}
 
-	public DataPacket<Map<?, ?>> getStatus(String mac, String key, SocketAddress address) throws IOException {
-		try (DatagramSocket socket = new DatagramSocket()) {
-			Map<String, Object> statusRequest = new HashMap<>();
-			statusRequest.put("cols", new String[] { "Pow", "Mod", "SetTem", "WdSpd", "Air", "Blo", "Health", "SwhSlp", "Lig", "SwingLfRig", "SwUpDn", "Quiet",
-					"Tur", "StHt", "TemUn", "HeatCoolType", "TemRec", "SvSt", "time" });
-			statusRequest.put("uid", 0);
-			statusRequest.put("t", "status");
-			Envelope requestEnvelope = createEnvelope(encryptionService.encryptStrToBase64(objectMapper.writeValueAsString(statusRequest), key), false);
-			requestEnvelope.setTcid(mac);
-			byte[] data = objectMapper.writeValueAsBytes(requestEnvelope);
-
-			socket.send(new DatagramPacket(data, data.length, address));
-			DatagramPacket packet = new DatagramPacket(new byte[65536], 65536);
-			socket.receive(packet);
-			Envelope responseEnvelope = objectMapper.readValue(Arrays.copyOf(packet.getData(), packet.getLength()), Envelope.class);
-			Map<?, ?> statusResponse = objectMapper.readValue(encryptionService.decryptBase64ToStr(responseEnvelope.getPack(), key), TreeMap.class);
-			return new DataPacket<>(packet, responseEnvelope, statusResponse);
-		}
-	}
-
-	public DataPacket<Map<?, ?>> setParameters(String mac, String key, SocketAddress address, String[] params, Object[] values) throws IOException {
-		try (DatagramSocket socket = new DatagramSocket()) {
-			Map<String, Object> request = new HashMap<>();
-			request.put("opt", params);
-			request.put("p", values);
-			request.put("t", "cmd");
-			Envelope requestEnvelope = createEnvelope(encryptionService.encryptStrToBase64(objectMapper.writeValueAsString(request), key), false);
-			requestEnvelope.setTcid(mac);
-			byte[] data = objectMapper.writeValueAsBytes(requestEnvelope);
-
-			socket.send(new DatagramPacket(data, data.length, address));
-			DatagramPacket packet = new DatagramPacket(new byte[65536], 65536);
-			socket.receive(packet);
-			Envelope responseEnvelope = objectMapper.readValue(Arrays.copyOf(packet.getData(), packet.getLength()), Envelope.class);
-			Map<?, ?> statusResponse = objectMapper.readValue(encryptionService.decryptBase64ToStr(responseEnvelope.getPack(), key), TreeMap.class);
-			return new DataPacket<>(packet, responseEnvelope, statusResponse);
-		}
-	}
-
-	public DataPacket<Map<?, ?>> setTime(String mac, String key, SocketAddress address, String time) throws IOException {
-		try (DatagramSocket socket = new DatagramSocket()) {
-			Map<String, Object> request = new HashMap<>();
-			request.put("opt", new String[] { "time" });
-			request.put("p", new String[] { time });
-			request.put("t", "cmd");
-			request.put("sub", mac);
-			Envelope requestEnvelope = createEnvelope(encryptionService.encryptStrToBase64(objectMapper.writeValueAsString(request), key), false);
-			requestEnvelope.setTcid(mac);
-			byte[] data = objectMapper.writeValueAsBytes(requestEnvelope);
-
-			socket.send(new DatagramPacket(data, data.length, address));
-			DatagramPacket packet = new DatagramPacket(new byte[65536], 65536);
-			socket.receive(packet);
-			Envelope responseEnvelope = objectMapper.readValue(Arrays.copyOf(packet.getData(), packet.getLength()), Envelope.class);
-			Map<?, ?> statusResponse = objectMapper.readValue(encryptionService.decryptBase64ToStr(responseEnvelope.getPack(), key), TreeMap.class);
-			return new DataPacket<>(packet, responseEnvelope, statusResponse);
-		}
-	}
-
-	protected Envelope createEnvelope(String pack, boolean i) {
+	protected Envelope createPackEnvelope(String pack, boolean i) {
 		Envelope envelope = new Envelope();
 		envelope.setT("pack");
 		envelope.setCid("app");

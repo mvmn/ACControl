@@ -5,8 +5,8 @@ import java.net.InetAddress;
 import java.util.List;
 import java.util.function.Consumer;
 
-import x.mvmn.aircndctrl.model.DataPacket;
-import x.mvmn.aircndctrl.model.DiscoverResponse;
+import x.mvmn.aircndctrl.model.comm.DataPacket;
+import x.mvmn.aircndctrl.model.response.DiscoverResponse;
 
 public interface ACDiscoverService {
 

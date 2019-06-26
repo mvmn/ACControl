@@ -1,4 +1,4 @@
-package x.mvmn.aircndctrl.model;
+package x.mvmn.aircndctrl.model.response;
 
 public class DiscoverResponse {
 	protected String t;

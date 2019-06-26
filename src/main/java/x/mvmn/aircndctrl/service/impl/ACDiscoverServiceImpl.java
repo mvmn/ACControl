@@ -8,8 +8,10 @@ import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.function.Consumer;
@@ -17,10 +19,11 @@ import java.util.function.Consumer;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import x.mvmn.aircndctrl.model.BindResponse;
-import x.mvmn.aircndctrl.model.DataPacket;
-import x.mvmn.aircndctrl.model.DiscoverResponse;
-import x.mvmn.aircndctrl.model.Envelope;
+import x.mvmn.aircndctrl.model.addr.ACBinding;
+import x.mvmn.aircndctrl.model.comm.DataPacket;
+import x.mvmn.aircndctrl.model.comm.Envelope;
+import x.mvmn.aircndctrl.model.response.BindResponse;
+import x.mvmn.aircndctrl.model.response.DiscoverResponse;
 import x.mvmn.aircndctrl.service.ACDiscoverService;
 import x.mvmn.aircndctrl.service.EncryptionService;
 
@@ -104,20 +107,19 @@ public class ACDiscoverServiceImpl implements ACDiscoverService {
 		service.discover(5000, data -> {
 			System.out.println(data.getData());
 
-			if (data.getData().getName().contains("bedroom")) {
-				try {
-					DataPacket<BindResponse> bindResponse = cs.bind(data.getData().getMac(), data.getAddress());
-					System.out.println(bindResponse.getData());
-					// System.out.println(cs.setParameters(bindResponse.getData().getMac(), bindResponse.getData().getKey(), bindResponse.getAddress(),
-					// new String[] { "Pow" }, new Object[] { 1 }).getData());
-					System.out.println(cs.getStatus(bindResponse.getData().getMac(), bindResponse.getData().getKey(), bindResponse.getAddress()).getData());
+			try {
+				DataPacket<BindResponse> bindResponse = cs.bind(data.getData().getMac(), data.getAddress());
+				ACBinding binding = ACBinding.ofBindResponse(bindResponse);
+				System.out.println(bindResponse.getData());
+				System.out.println(cs.getStatus(binding).getData());
+				System.out.println(cs.setParameters(binding, new String[] { "Pow", "Lig" }, new Object[] { 1, 1 }).getData().valuesMap());
+				System.out.println(cs.getStatus(binding).getData().valuesMap());
 
-					// System.out.println("Setting time to " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
-					// System.out.println(cs.setTime(bindResponse.getData().getMac(), bindResponse.getData().getKey(), bindResponse.getAddress(),
-					// new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())));
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+				String dateFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+				System.out.println("Setting time to " + dateFmt);
+				System.out.println(cs.setTime(binding, dateFmt).getData());
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
 		});
 	}

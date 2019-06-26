@@ -1,4 +1,4 @@
-package x.mvmn.aircndctrl.model;
+package x.mvmn.aircndctrl.model.comm;
 
 import java.net.DatagramPacket;
 import java.net.InetSocketAddress;

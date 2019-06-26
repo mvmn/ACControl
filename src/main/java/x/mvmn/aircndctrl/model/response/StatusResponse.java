@@ -1,17 +1,22 @@
-package x.mvmn.aircndctrl.model;
+package x.mvmn.aircndctrl.model.response;
 
-public class BindResponse {
-	protected String t;
+import java.util.Arrays;
+import java.util.Map;
+import java.util.TreeMap;
+
+public class StatusResponse {
+	protected String[] cols;
+	protected Object[] dat;
 	protected String mac;
-	protected String key;
 	protected Long r;
+	protected String t;
 
-	public String getT() {
-		return t;
+	public Object[] getDat() {
+		return dat;
 	}
 
-	public void setT(String t) {
-		this.t = t;
+	public void setDat(Object[] dat) {
+		this.dat = dat;
 	}
 
 	public String getMac() {
@@ -22,14 +27,6 @@ public class BindResponse {
 		this.mac = mac;
 	}
 
-	public String getKey() {
-		return key;
-	}
-
-	public void setKey(String key) {
-		this.key = key;
-	}
-
 	public Long getR() {
 		return r;
 	}
@@ -38,10 +35,35 @@ public class BindResponse {
 		this.r = r;
 	}
 
+	public String getT() {
+		return t;
+	}
+
+	public void setT(String t) {
+		this.t = t;
+	}
+
+	public String[] getCols() {
+		return cols;
+	}
+
+	public void setCols(String[] cols) {
+		this.cols = cols;
+	}
+
+	public Map<String, Object> valuesMap() {
+		Map<String, Object> map = new TreeMap<>();
+		for (int i = 0; i < cols.length && i < dat.length; i++) {
+			map.put(cols[i], dat[i]);
+		}
+		return map;
+	}
+
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("BindResponse [t=").append(t).append(", mac=").append(mac).append(", key=").append(key).append(", r=").append(r).append("]");
+		builder.append("GetStatusResponse [cols=").append(Arrays.toString(cols)).append(", dat=").append(Arrays.toString(dat)).append(", mac=").append(mac)
+				.append(", r=").append(r).append(", t=").append(t).append("]");
 		return builder.toString();
 	}
 
@@ -49,7 +71,8 @@ public class BindResponse {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((key == null) ? 0 : key.hashCode());
+		result = prime * result + Arrays.hashCode(cols);
+		result = prime * result + Arrays.hashCode(dat);
 		result = prime * result + ((mac == null) ? 0 : mac.hashCode());
 		result = prime * result + ((r == null) ? 0 : r.hashCode());
 		result = prime * result + ((t == null) ? 0 : t.hashCode());
@@ -64,11 +87,10 @@ public class BindResponse {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		BindResponse other = (BindResponse) obj;
-		if (key == null) {
-			if (other.key != null)
-				return false;
-		} else if (!key.equals(other.key))
+		StatusResponse other = (StatusResponse) obj;
+		if (!Arrays.equals(cols, other.cols))
+			return false;
+		if (!Arrays.equals(dat, other.dat))
 			return false;
 		if (mac == null) {
 			if (other.mac != null)

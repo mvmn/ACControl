@@ -1,4 +1,4 @@
-package x.mvmn.aircndctrl.model;
+package x.mvmn.aircndctrl.model.comm;
 
 public class Envelope {
 	protected String t;
@@ -12,48 +12,54 @@ public class Envelope {
 		return t;
 	}
 
-	public void setT(String t) {
+	public Envelope setT(String t) {
 		this.t = t;
+		return this;
 	}
 
 	public Long getI() {
 		return i;
 	}
 
-	public void setI(Long i) {
+	public Envelope setI(Long i) {
 		this.i = i;
+		return this;
 	}
 
 	public Long getUid() {
 		return uid;
 	}
 
-	public void setUid(Long uid) {
+	public Envelope setUid(Long uid) {
 		this.uid = uid;
+		return this;
 	}
 
 	public String getCid() {
 		return cid;
 	}
 
-	public void setCid(String cid) {
+	public Envelope setCid(String cid) {
 		this.cid = cid;
+		return this;
 	}
 
 	public String getTcid() {
 		return tcid;
 	}
 
-	public void setTcid(String tcid) {
+	public Envelope setTcid(String tcid) {
 		this.tcid = tcid;
+		return this;
 	}
 
 	public String getPack() {
 		return pack;
 	}
 
-	public void setPack(String pack) {
+	public Envelope setPack(String pack) {
 		this.pack = pack;
+		return this;
 	}
 
 	@Override
