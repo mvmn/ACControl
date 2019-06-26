@@ -21,7 +21,7 @@ public interface ACControlService {
 
 	DataPacket<StatusResponse> getStatus(ACBinding binding) throws IOException;
 
-	DataPacket<StatusResponse> getStatus(ACBinding binding, List<String> columnsList) throws IOException;
+	DataPacket<StatusResponse> getStatus(ACBinding binding, String... columnsList) throws IOException;
 
 	DataPacket<SetParametersResponse> setParameters(ACBinding binding, Map<String, ?> values) throws IOException;
 

@@ -5,7 +5,6 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketAddress;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -29,8 +28,8 @@ public class ACControlServiceImpl implements ACControlService {
 	protected static final TypeReference<StatusResponse> TYPEREF_GET_STATUS_RESPONSE = new TypeReference<StatusResponse>() {};
 	protected static final TypeReference<SetParametersResponse> TYPEREF_SET_PARAMS_RESPONSE = new TypeReference<SetParametersResponse>() {};
 
-	protected static final List<String> ALL_COLUMNS_LIST = Arrays.asList("Pow", "Mod", "SetTem", "WdSpd", "Air", "Blo", "Health", "SwhSlp", "Lig", "SwingLfRig",
-			"SwUpDn", "Quiet", "Tur", "StHt", "TemUn", "HeatCoolType", "TemRec", "SvSt", "time");
+	protected static final String[] ALL_COLUMNS_LIST = { "Pow", "Mod", "SetTem", "WdSpd", "Air", "Blo", "Health", "SwhSlp", "Lig", "SwingLfRig", "SwUpDn",
+			"Quiet", "Tur", "StHt", "TemUn", "HeatCoolType", "TemRec", "SvSt", "time" };
 
 	private final EncryptionService encryptionService;
 	private final ObjectMapper objectMapper;
@@ -60,14 +59,14 @@ public class ACControlServiceImpl implements ACControlService {
 		return getStatus(binding, ALL_COLUMNS_LIST);
 	}
 
-	public DataPacket<StatusResponse> getStatus(ACBinding binding, List<String> columnsList) throws IOException {
+	public DataPacket<StatusResponse> getStatus(ACBinding binding, String... columnsList) throws IOException {
 		Map<String, Object> request = LangUtil.mapBuilder("t", (Object) "status").set("uid", 0).set("cols", columnsList).build();
 		return exchange(binding, request, false, TYPEREF_GET_STATUS_RESPONSE);
 	}
 
 	public DataPacket<SetParametersResponse> setParameters(ACBinding binding, Map<String, ?> values) throws IOException {
 		String[] params = new String[values.size()];
-		Object[] valuesArr = new String[values.size()];
+		Object[] valuesArr = new Object[values.size()];
 
 		int i = 0;
 		for (Map.Entry<String, ?> entry : values.entrySet()) {
