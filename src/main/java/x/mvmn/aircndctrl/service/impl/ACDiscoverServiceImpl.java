@@ -26,6 +26,7 @@ import x.mvmn.aircndctrl.model.response.BindResponse;
 import x.mvmn.aircndctrl.model.response.DiscoverResponse;
 import x.mvmn.aircndctrl.service.ACDiscoverService;
 import x.mvmn.aircndctrl.service.EncryptionService;
+import x.mvmn.aircndctrl.util.LangUtil;
 
 public class ACDiscoverServiceImpl implements ACDiscoverService {
 
@@ -111,8 +112,8 @@ public class ACDiscoverServiceImpl implements ACDiscoverService {
 				DataPacket<BindResponse> bindResponse = cs.bind(data.getData().getMac(), data.getAddress());
 				ACBinding binding = ACBinding.ofBindResponse(bindResponse);
 				System.out.println(bindResponse.getData());
-				System.out.println(cs.getStatus(binding).getData());
-				System.out.println(cs.setParameters(binding, new String[] { "Pow", "Lig" }, new Object[] { 1, 1 }).getData().valuesMap());
+				System.out.println(cs.getStatus(binding).getData().valuesMap());
+				System.out.println(cs.setParameters(binding, LangUtil.mapBuilder("WdSpd", (Object) 1).set("Pow", 1).build()).getData().valuesMap());
 				System.out.println(cs.getStatus(binding).getData().valuesMap());
 
 				String dateFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());

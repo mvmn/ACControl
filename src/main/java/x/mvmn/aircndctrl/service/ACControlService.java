@@ -2,7 +2,6 @@ package x.mvmn.aircndctrl.service;
 
 import java.io.IOException;
 import java.net.SocketAddress;
-import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.type.TypeReference;
