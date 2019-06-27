@@ -15,40 +15,45 @@ public class StatusResponse {
 		return dat;
 	}
 
-	public void setDat(Object[] dat) {
+	public StatusResponse setDat(Object[] dat) {
 		this.dat = dat;
+		return this;
 	}
 
 	public String getMac() {
 		return mac;
 	}
 
-	public void setMac(String mac) {
+	public StatusResponse setMac(String mac) {
 		this.mac = mac;
+		return this;
 	}
 
 	public Long getR() {
 		return r;
 	}
 
-	public void setR(Long r) {
+	public StatusResponse setR(Long r) {
 		this.r = r;
+		return this;
 	}
 
 	public String getT() {
 		return t;
 	}
 
-	public void setT(String t) {
+	public StatusResponse setT(String t) {
 		this.t = t;
+		return this;
 	}
 
 	public String[] getCols() {
 		return cols;
 	}
 
-	public void setCols(String[] cols) {
+	public StatusResponse setCols(String[] cols) {
 		this.cols = cols;
+		return this;
 	}
 
 	public Map<String, Object> valuesMap() {
