@@ -33,17 +33,34 @@ public class ACControlServiceImpl implements ACControlService {
 
 	private final EncryptionService encryptionService;
 	private final ObjectMapper objectMapper;
+	private final Integer socketTimeout;
 
 	public ACControlServiceImpl(EncryptionService encryptionService) {
 		this.encryptionService = encryptionService;
 		ObjectMapper objectMapper = new ObjectMapper();
 		objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 		this.objectMapper = objectMapper;
+		this.socketTimeout = null;
 	}
 
 	public ACControlServiceImpl(EncryptionService encryptionService, ObjectMapper objectMapper) {
 		this.encryptionService = encryptionService;
 		this.objectMapper = objectMapper;
+		this.socketTimeout = null;
+	}
+
+	public ACControlServiceImpl(EncryptionService encryptionService, Integer socketTimeout) {
+		this.encryptionService = encryptionService;
+		ObjectMapper objectMapper = new ObjectMapper();
+		objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+		this.objectMapper = objectMapper;
+		this.socketTimeout = socketTimeout;
+	}
+
+	public ACControlServiceImpl(EncryptionService encryptionService, Integer socketTimeout, ObjectMapper objectMapper) {
+		this.encryptionService = encryptionService;
+		this.objectMapper = objectMapper;
+		this.socketTimeout = socketTimeout;
 	}
 
 	public DataPacket<BindResponse> bind(ACAddress acAddress) throws IOException {
@@ -109,6 +126,9 @@ public class ACControlServiceImpl implements ACControlService {
 		byte[] data = objectMapper.writeValueAsBytes(createPackEnvelope(packetEncrypted, i).setTcid(mac));
 
 		try (DatagramSocket socket = new DatagramSocket()) {
+			if (socketTimeout != null) {
+				socket.setSoTimeout(socketTimeout);
+			}
 			socket.send(new DatagramPacket(data, data.length, address));
 			DatagramPacket packet = new DatagramPacket(new byte[65536], 65536);
 			socket.receive(packet);
