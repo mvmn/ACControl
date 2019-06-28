@@ -73,6 +73,7 @@ public class ACDiscoverServiceImpl implements ACDiscoverService {
 				DatagramPacket sendPacket = new DatagramPacket(DISCOVER_PACKET, DISCOVER_PACKET.length, broadcastAddress, 7000);
 				try (DatagramSocket socket = new DatagramSocket()) {
 					socket.setSoTimeout(timeout);
+					socket.setBroadcast(true);
 					socket.send(sendPacket);
 
 					int attempts = 265;
