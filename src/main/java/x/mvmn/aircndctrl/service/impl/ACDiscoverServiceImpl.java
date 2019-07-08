@@ -14,6 +14,8 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -46,7 +48,7 @@ public class ACDiscoverServiceImpl implements ACDiscoverService {
 		this.objectMapper = objectMapper;
 	}
 
-	public List<InetAddress> discover(int timeout, Consumer<DataPacket<DiscoverResponse>> callback) throws IOException {
+	public CompletableFuture<Void> discover(int timeout, Consumer<DataPacket<DiscoverResponse>> callback) throws IOException {
 		List<InetAddress> broadcastAddresses = new ArrayList<>();
 		Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
 		while (interfaces.hasMoreElements()) {
@@ -61,27 +63,29 @@ public class ACDiscoverServiceImpl implements ACDiscoverService {
 			}
 		}
 
-		if (!broadcastAddresses.isEmpty()) {
-			discover(timeout, callback, broadcastAddresses.toArray(new InetAddress[broadcastAddresses.size()]));
-		}
-		return broadcastAddresses;
+		return (!broadcastAddresses.isEmpty()) ? discover(timeout, callback, broadcastAddresses.toArray(new InetAddress[broadcastAddresses.size()]))
+				: CompletableFuture.completedFuture(null);
 	}
 
-	public void discover(int timeout, Consumer<DataPacket<DiscoverResponse>> callback, InetAddress... broadcastAddresses) throws IOException {
+	public CompletableFuture<Void> discover(int timeout, Consumer<DataPacket<DiscoverResponse>> callback, InetAddress... broadcastAddresses)
+			throws IOException {
+		Executor executor = runnable -> new Thread(runnable).start();
+		List<CompletableFuture<Void>> discoverAttempts = new ArrayList<>();
 		for (InetAddress broadcastAddress : broadcastAddresses) {
-			new Thread(() -> {
+			discoverAttempts.add(CompletableFuture.supplyAsync(() -> {
+				List<CompletableFuture<Void>> discoverHandlings = new ArrayList<>();
 				DatagramPacket sendPacket = new DatagramPacket(DISCOVER_PACKET, DISCOVER_PACKET.length, broadcastAddress, 7000);
 				try (DatagramSocket socket = new DatagramSocket()) {
 					socket.setSoTimeout(timeout);
 					socket.setBroadcast(true);
 					socket.send(sendPacket);
 
-					int attempts = 265;
+					int attempts = 256;
 					while (attempts-- > 0) {
 						DatagramPacket receivePacket = new DatagramPacket(new byte[65536], 65536);
 						socket.receive(receivePacket);
 						byte[] data = Arrays.copyOf(receivePacket.getData(), receivePacket.getLength());
-						new Thread(() -> {
+						discoverHandlings.add(CompletableFuture.supplyAsync(() -> {
 							try {
 								Envelope envelope = objectMapper.readValue(data, Envelope.class);
 								if ("pack".equalsIgnoreCase(envelope.getT())) {
@@ -92,15 +96,18 @@ public class ACDiscoverServiceImpl implements ACDiscoverService {
 							} catch (Throwable t) {
 								t.printStackTrace();
 							}
-						}).start();
+							return null;
+						}, executor));
 					}
 				} catch (SocketTimeoutException te) {
 					// Discovery finished - no more responses
-				} catch (Exception e) {
+				} catch (Throwable e) {
 					e.printStackTrace();
 				}
-			}).start();
+				return CompletableFuture.allOf(discoverHandlings.toArray(new CompletableFuture[discoverHandlings.size()])).join();
+			}, executor));
 		}
+		return CompletableFuture.allOf(discoverAttempts.toArray(new CompletableFuture[discoverAttempts.size()]));
 	}
 
 	public static void main(String args[]) throws Exception {
